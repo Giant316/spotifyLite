@@ -9,7 +9,7 @@
 #'   analysis of the respective tracks within the playlists or albums retrieved
 #'   from the previous search.
 #'
-#' @details See the README on Github
+#' @details See the README on \href{https://github.com/Giant316/spotifyLite/blob/main/README.md}{Github}
 #' @keywords internal
 "_PACKAGE"
 

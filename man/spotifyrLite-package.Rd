@@ -17,6 +17,6 @@ This package allows you to make requests to Spotify Web API to
   from the previous search.
 }
 \details{
-See the README on Github
+See the README on \href{https://github.com/Giant316/spotifyLite/blob/main/README.md}{Github}
 }
 \keyword{internal}
