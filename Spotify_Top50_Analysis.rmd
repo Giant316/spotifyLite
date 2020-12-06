@@ -1,15 +1,15 @@
 ---
-title: 'Data Analysis '
+title: "Spotify Top50 tracks by Country Analysis"
 author: "JiaYan"
 date: "10/6/2019"
-output:
-  md_document:
-    variant: markdown_github
+output: rmarkdown::github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+## Introduction
 Spotify provides an access of audio features' metadata of all songs available in its platform. We
 can collect this metadata at our disposal through the API key. The following analysis is an attempt 
 to find relationship among the audio features and to find if there is a music preference geographically 
@@ -23,72 +23,20 @@ copy it and your Client ID to replace the following. The you will have your Spot
 *Note: make sure "http://localhost:8888" and "http://localhost:8888/callback" are added under
 Redirect URIs from the settings*
 
-```{r}
-library(spotifyr)
-library(dplyr) # To use piping
-library(stringr) # string manipulation
-client_id <- "8d280370d04c4cda9c0a463cfa8636e3"
-client_secret <- "b91b6996ad194150b415313ab7b8db80"
-Sys.setenv(SPOTIFY_CLIENT_ID = client_id)
-Sys.setenv(SPOTIFY_CLIENT_SECRET = client_secret)
-access_token <- get_spotify_access_token()
-```
+Using the lightweight R wrapper I developed to retreive all Top 50 tracks by country via Spotify's Web API, I output the data saved as `.txt` using `dput` function. The data can be easily loaded back to R by running the `dput` function. 
 
-## Get Metadata from Spotify
-In this analysis, I am comparing the Top50 tracks from all countries so I am retrieving the playlist 
-from the Top50 Charts by country in Spotify. The easiest way to pull the song metadata from Spotify 
-is accessing through the playlist in your Spotify account. To do this, first add all the charts list 
-manually to your playlist and then using get_user_playlists, get_playlist_tracks and 
-get_track_audio_features functions from the spotifyr package to retrieve the metadata of those songs. 
-To use get_user_playlists function, give your Spotify ID as input. 
-
-```{r}
-# only select the Top50 charts playlist, rename playlist name as respective country
-playlist <- get_user_playlists('gorpublicusage') %>% filter(grepl("^Top 50.*", name)) %>% select(id, country = name) 
-playlist$country <- lapply(playlist$country, str_remove, "Top 50 ") 
-
-topTrack <-data.frame()
-remaining_countries <- c()
-for (i in 1:dim(playlist)[1]) {
-    print(str_c("Processing Country: ", playlist$country[i]))
-    succeed = FALSE
-    tryCatch({
-      # get the audio features of each track in the top50 charts by country using the track.id
-      df <- get_playlist_tracks(playlist$id[i]) %>%
-        select(track.id,track.name,track.artists,track.popularity) 
-      topTrack <- get_track_audio_features(df$track.id) %>% 
-        select(-track_href, -uri, -id, -analysis_url, -type, -time_signature) %>%
-        mutate(Track = as.character(df$track.name), Track.Id = as.character(df$track.id), 
-               Artists = as.list(lapply(df$track.artists , "[[" , "name" )), 
-               Artists.Id = as.list(lapply(df$track.artists , "[[" , "id" )),
-               Popularity = as.numeric(df$track.popularity), 
-               Country = as.character(playlist$country[i])) %>% rbind(topTrack)
-      succeed = TRUE
-      print("Succeed!")
-    }, error = function(e) { print(e) })
-    
-    # If fail, add the country to the remaining countries list
-    if (!succeed) {
-      remaining_countries <- c(remaining_countries, playlist$country[i])
-    }
-}
-rm(df) # remove unnecessary df created in the loop
-rm(remaining_countries)
-```
-
-```{r echo=FALSE}
+```{r message=FALSE}
 topTrack <- dget(file = "/Users/jiayan/Documents/GitHub/spotifyrLite/Spotify_Top50_byCountry.txt")
 ```
-
 
 ## Data Cleansing
 A little house-keeping for the dataframe. Since the data was accessed in Germany, I have to map the 
 respective countries name to its respective English name (as later on I will need to join by country
 name with map_data to get its coordinates). An additional column of "Continent" is added so that we 
 can make analysis on higher level. 
-```{r}
+```{r message=FALSE}
 library(plyr)
-library(magrittr) # to us %<>% piping
+library(dplyr) # To use piping
 topTrack$Country <- as.character(mapvalues(topTrack$Country,from = c('Australien', 'Österreich', 
 'Belgien', 'Bolivien', 'Kanada', 'Bulgarien', 'Brasilien', 'Dänemark', 'Tschechische', 'Estland', 'Deutschland', 'Frankreich', 'Finnland', 'Griechenland', 'Ungarn', 'Island', 'Irland', 'Israel', 
 'Italien', 'Luxemburg','Litauen', 'Lettland', 'Mexiko', 'Neuseeland', 'Niederlande', 'Norwegen', 
@@ -120,8 +68,7 @@ we have to check the validty of such assumption. So we plot a Q-Q plot to verify
 check if there is a pattern exists in the residuals of the model. A linear model fit should have
 non-correlated residuals and its qqPlot should be fitted to a line. We can see that both plots 
 violated the condiitions so we have to look beyond a linear model. 
-```{r linear}
-library(dplyr) # To use piping
+```{r linear, message=FALSE}
 library(car)
 library(ggplot2)
 feature <- topTrack %>% select(Popularity, danceability, energy, key, loudness, mode, speechiness, 
@@ -141,7 +88,7 @@ I am going to handpick an interesting audio feature which is the valence score. 
 indicates the happiness level of the song (given on the scale of 0-1; for 1 being happy; 0 being sad).
 It is interesting to see how latin America countries & Spanish speaking countries dominated the rank 
 of mean valence score. 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(ggplot2)
 library(gameofthrones)
 library(scales) #rescale values 
@@ -167,7 +114,7 @@ tail(valenceRank,10)
 
 On continent level, the valence distributions of North America and South America are skewed more 
 toward the positive value but all continents have similar wide spread. 
-```{r valence_Joyplot}
+```{r valence_Joyplot, message=FALSE, warning=FALSE}
 ggplot(topTrack, aes(x=valence, y=Continent, fill=Continent)) %.>% 
   geom_joy(scale=3, rel_min_height=0.01) %.>% 
   scale_fill_got(discrete = TRUE, option = "Margaery") %.>%  
@@ -179,7 +126,7 @@ ggplot(topTrack, aes(x=valence, y=Continent, fill=Continent)) %.>%
 
 It is likely that the danceability of a song highly related to how happy the song is so I made another
 joyplot for danceability on continent level. 
-```{r danceability_Joyplot}
+```{r danceability_Joyplot, message=FALSE, warning=FALSE}
 ggplot(topTrack, aes(x=danceability, y=Continent, fill=Continent)) +
   geom_joy(scale=3, rel_min_height=0.01) +
   scale_fill_got(discrete = TRUE, option = "Daenerys") +
@@ -190,7 +137,7 @@ ggplot(topTrack, aes(x=danceability, y=Continent, fill=Continent)) +
         legend.position='none')
 ```
 
-```{r valence_Map}
+```{r valence_Map, message=FALSE, warning=FALSE}
 left_join(map_data('world'), topTrack, by = c('region' = 'Country')) %.>% 
   ggplot(., aes(x = long, y = lat, group = group)) %.>% geom_polygon(aes(fill = valence)) %.>%
   scale_fill_got(option = "Tully") %.>% 
@@ -199,10 +146,7 @@ left_join(map_data('world'), topTrack, by = c('region' = 'Country')) %.>%
        caption = "Data Source:Spotify Top50 Chart by Country") 
 ```
 
-```{r}
-# if (!require("devtools")) install.packages("devtools")
-# devtools::install_github("mkuhn/dict")
-#library(dict)
+```{r message=FALSE, warning=FALSE}
 df_Language <- topTrack %>% mutate(language = "")  %>% 
 mutate(language = replace(language, Country %in% c("China", "Taiwan"), "Chinese")) %>%
 mutate(language = replace(language, Country %in% c("Malaysia", "Indonesia"), "Malay")) %>% 
@@ -247,7 +191,7 @@ valence score as an indicator of likeness in happy/sad music. I omitted grouping
 under the same language group because t-test suggests that these two groups are significantly different
 (Although some countries within the latin America group show significant different according to the 
 t-test but since all Spanish-speaking latin America countries dominated the Top 20 in valence score)
-```{r}
+```{r message=FALSE, warning=FALSE}
 index <- duplicated(df_Language$Track.Id) | duplicated(df_Language$Track.Id, fromLast = T)
 
 stats<-df_Language[!index, ] %>% group_by(language) %>%  
@@ -269,7 +213,7 @@ ggplot(df_Language[!index, ], aes(y = valence, x = language, fill = language)) +
 ```
 
 TukeyHSD() function provides a test of all pairwise differences between group means
-```{r}
+```{r message=FALSE, warning=FALSE}
 fit <- aov(valence ~ language, df_Language[!index,])
 TukeyHSD(fit, ordered = T)
 par(las=2)
@@ -277,3 +221,9 @@ par(mar=c(5,8,4,2))
 plot(TukeyHSD(fit))
 ```
 
+## Conclusion 
+The preliminary finding demonstrates that musical preferences are influenced by both geographical and linguistic factors and the pop music across Latin American countries shares similar musical features. The people in Latin America countries seem to enjoy happy songs way more than the rest of the world. Nevertheless, the countries that share the common dominated spoken language also show a similarity in liking positive songs. The people in Spain share the passion in happy songs as much as the other Spanish-speaking countries. It is interesting to notice that the Brazilian, despite having the same spoken language as the Portuguese, show a more similar musical taste with the people of its neighboring countries. This could be due to the fact that Portuguese songs are not as predominant as the Spanish songs in Spotify market and the Brazilian Portuguese language is known to be different from the Portuguese spoken in Portugal (But I have no idea how Spanish differ in different Spanish-speaking region). 
+
+On the other side, although the Chinese dialects spoken in Taiwan and Hong Kong are different, the Chinese in these two regions has similar preference toward melancholic music. Unlike the Spanish-speaking countries of having almost entirely Spanish songs in their top 50 charts, the Chinese seem to be more open to some English and Korean songs. The Chinese songs within the top 50 charts are generally the melancholic type so as the favourite English songs listed in their top chart. Sad melody seem to be the cup of tea for the Chinese and the Spanish songwriters seem to be in favor of having cheerful musical notes. As for the English-speaking countries, although they have the most variations in term of location and language dialects, their song preference in term of positiveness do not differ much but this could be because of the dominance of the American in the music industry.
+
+In short, this project shows that the difference in musical preference does exist either geographically or linguistically. Certainly there are also other confounding factors that influence the similarity or dissimilarity in musical preferences.
