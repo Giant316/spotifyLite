@@ -1,0 +1,24 @@
+{
+    "id": "7AC9DC30",
+    "path": "~/Documents/GitHub/spotifyrLite/R/utils.R",
+    "project_path": "R/utils.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1607029348000.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "cursorPosition": "50,45",
+        "scrollLine": "35"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1607076630,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1607076630628,
+    "read_only": false,
+    "read_only_alternatives": []
+}
